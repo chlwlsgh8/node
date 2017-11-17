@@ -48,15 +48,31 @@ function connectDB() {
 
         // 유저스키마 생성 ( 구조 )
         UserSchema = mongoose.Schema({
-            id : String,
-            name : String,
-            password : String
+            id : {type : String, required : true ,unique : true},
+            password : {type : String, required : true },
+            name : {type : String, index : 'hashed'},
+            age : {type : Number, 'default' : -1},
+            created_at : {type : Date, index : {unique:false},'default' : Date.now},
+            updated_at : {type : Date, index : {unique:false},'default' : Date.now},
         });
+
+        // 스키마로 만든 객체의 함수 생성
+
+        // id를 넣어서 값을 찾은다음 콜백함수로 호출
+        UserSchema.static('findById',function (id, callback) {
+            return this.find({id: id},callback);
+        });
+
+        // 전체 데이터를 조회하는 함수
+        UserSchema.static('findAll',function (callback) {
+            return this.find({},callback);
+        });
+
         console.log('schema 생성');
 
         // 데이터베이스의 컬렉션을 지정하는 모델 객체
-        UserModel = mongoose.model('users',UserSchema);
-        console.log('usermodel 객체 생성');
+        UserModel = mongoose.model('users2',UserSchema);
+        console.log('usermodel2 객체 생성');
 
     });
 
@@ -114,7 +130,32 @@ router.route('/process/adduser').post(function (req, res) {
         });
     }
 
-})
+});
+
+// /process/listuser 경로에 사용자리스트 호출하는 라우터 미들웨어 등록
+router.route('/process/listuser').post(function (req, res) {
+    console.log('사용자리스트 호출');
+
+    if(database){
+        // 유저모델의 전체리스트를 조회하는 findAll 메소드 호출
+        UserModel.findAll(function (err, result) {
+            if(result){
+                console.dir(result);
+
+                res.writeHead('200', {'Content-Type':'text/html;charset=utf8'});
+                res.write('<h2>사용자 리스트</h2>');
+                res.write('<div><ul>');
+
+                // findAll 메소드로 찾은 리스트값 result 배열 출력
+                for(var i=0;i<result.length;i++){
+                    var curId = result[i]._doc.id;
+                    var curName = result[i]._doc.name;
+                    res.write('    <li>#' + i + ' : ' + curId + ', ' + curName + '</li>');
+                };
+            };
+        });
+    };
+});
 
 // 라우터 미들웨어 등록
 app.use('/',router);
@@ -125,16 +166,17 @@ var authuser = function ( id, password, callback) {
     console.log('authuser 함수 호출');
 
     // 사용자가 입력한값과 db의 모델객체의 값 비교하는 메소드
-    UserModel.find({'id':id,'password':password},function (err, result) {
+    UserModel.findById(id,function (err, result) {
         if(err){
-            callback(err,null)
+            callback(err,null);
             return;
         }
-        console.log('결과 id:'+id+', password:'+password);
-        console.log(result);
-        callback(null,result);
+        if(result[0]._doc.password == password){
+            console.log('결과 id:'+id+', password:'+password);
+            console.log(result);
+            callback(null,result);
+        }
     })
-
 };
 
 // 사용자 추가함수 생성
@@ -160,4 +202,3 @@ http.createServer(app).listen(app.get('port'),function () {
     // 몽고디비 연결 함수 호출
     connectDB();
 });
-

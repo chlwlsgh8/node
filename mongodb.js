@@ -125,7 +125,7 @@ var authuser = function (database, id, password, callback) {
 var adduser = function (database, id, password, name, callback) {
     console.log('adduser 호출');
 
-    // db값 가져오기
+    // users 컬렉션 가져오기
     var users = database.collection('users');
 
     // insertMany 메소드로 사용자 추가
